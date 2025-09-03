@@ -24,18 +24,14 @@
 #![allow(
     clippy::cast_possible_wrap,
     clippy::collapsible_if,
-    clippy::missing_safety_doc,
     clippy::needless_return,
-    clippy::no_effect,
     clippy::nonminimal_bool,
-    clippy::precedence,
     clippy::ptr_offset_with_cast,
     clippy::single_match,
     clippy::too_many_arguments,
     clippy::unwrap_used,
     non_camel_case_types,
     non_snake_case,
-    non_upper_case_globals,
     unsafe_op_in_unsafe_fn
 )]
 
