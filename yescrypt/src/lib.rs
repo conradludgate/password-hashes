@@ -32,13 +32,10 @@
     clippy::ptr_offset_with_cast,
     clippy::single_match,
     clippy::too_many_arguments,
-    clippy::toplevel_ref_arg,
     clippy::unwrap_used,
-    clippy::zero_ptr,
     non_camel_case_types,
     non_snake_case,
     non_upper_case_globals,
-    path_statements,
     unsafe_op_in_unsafe_fn
 )]
 
@@ -558,13 +555,11 @@ unsafe fn yescrypt_kdf_body(
                                                                             != 0
                                                                         {
                                                                             for i in 0..p {
-                                                                                let ref mut fresh5 =
-                                                                                    (*pwxform_ctx
+                                                                                (*pwxform_ctx
                                                                                         .offset(
                                                                                         i as isize,
                                                                                     ))
-                                                                                    .S;
-                                                                                *fresh5 = S
+                                                                                    .S = S
                                                                                     .offset(
                                                                                         (i as libc::c_ulong)
                                                                                             .wrapping_mul(
@@ -884,10 +879,8 @@ unsafe fn smix(
     }
     Nchunk &= !(1 as libc::c_int as uint64_t);
     Nloop_all = Nloop_all.wrapping_add(1);
-    Nloop_all;
     Nloop_all &= !(1 as libc::c_int as uint64_t);
     Nloop_rw = Nloop_rw.wrapping_add(1);
-    Nloop_rw;
     Nloop_rw &= !(1 as libc::c_int as uint64_t);
     let mut Vchunk = 0 as libc::c_int as uint64_t;
     for i in 0..p {
