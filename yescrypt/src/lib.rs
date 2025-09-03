@@ -261,7 +261,6 @@ unsafe fn yescrypt_kdf_body(
         match current_block {
             15162489974460950378 => {}
             _ => {
-                let VROM = ptr::null();
                 if NROM != 0 {
                     current_block = 15162489974460950378;
                 } else {
@@ -398,8 +397,6 @@ unsafe fn yescrypt_kdf_body(
                                                     t,
                                                     flags,
                                                     V,
-                                                    NROM,
-                                                    VROM,
                                                     XY,
                                                     pwxform_ctx,
                                                     sha256.as_mut_ptr() as *mut u8,
@@ -418,8 +415,6 @@ unsafe fn yescrypt_kdf_body(
                                                         t,
                                                         flags,
                                                         V,
-                                                        NROM,
-                                                        VROM,
                                                         XY,
                                                         ptr::null_mut(),
                                                         ptr::null_mut(),
@@ -585,8 +580,6 @@ unsafe fn smix(
     t: u32,
     flags: Flags,
     V: *mut u32,
-    NROM: u64,
-    VROM: *const u32,
     XY: *mut u32,
     ctx: *mut PwxformCtx,
     passwd: *mut u8,
@@ -638,8 +631,6 @@ unsafe fn smix(
                 (3 * ((1) << 8) * 2 * 8 / 128) as u64,
                 0 as Flags,
                 (*ctx_i).S,
-                0_u64,
-                ptr::null(),
                 XY,
                 ptr::null_mut(),
             );
@@ -657,19 +648,8 @@ unsafe fn smix(
                 );
             }
         }
-        smix1(Bp, r, Np, flags, Vp, NROM, VROM, XY, ctx_i);
-        smix2(
-            Bp,
-            r,
-            prev_power_of_two(Np),
-            Nloop_rw,
-            flags,
-            Vp,
-            NROM,
-            VROM,
-            XY,
-            ctx_i,
-        );
+        smix1(Bp, r, Np, flags, Vp, XY, ctx_i);
+        smix2(Bp, r, prev_power_of_two(Np), Nloop_rw, flags, Vp, XY, ctx_i);
         Vchunk = Vchunk.wrapping_add(Nchunk);
     }
     for i in 0..p {
@@ -681,8 +661,6 @@ unsafe fn smix(
             Nloop_all.wrapping_sub(Nloop_rw),
             flags & !(0x2),
             V,
-            NROM,
-            VROM,
             XY,
             if flags & 0x2_u32 != 0 {
                 ctx.add(i as usize)
@@ -699,8 +677,6 @@ unsafe fn smix1(
     N: u64,
     flags: Flags,
     V: *mut u32,
-    NROM: u64,
-    VROM: *const u32,
     XY: *mut u32,
     ctx: *mut PwxformCtx,
 ) {
@@ -719,21 +695,7 @@ unsafe fn smix1(
     }
     for i in 0..N {
         blkcpy(V.add(usize::try_from(i).unwrap().wrapping_mul(s)), X, s);
-        if !VROM.is_null() && i == 0_u64 {
-            blkxor(
-                X,
-                VROM.add(
-                    usize::try_from(NROM)
-                        .unwrap()
-                        .wrapping_sub(1)
-                        .wrapping_mul(s),
-                ),
-                s,
-            );
-        } else if !VROM.is_null() && i & 1_u64 != 0 {
-            let j = integerify(X, r) & NROM.wrapping_sub(1);
-            blkxor(X, VROM.add(usize::try_from(j).unwrap().wrapping_mul(s)), s);
-        } else if flags & 0x2_u32 != 0 && i > 1_u64 {
+        if flags & 0x2_u32 != 0 && i > 1_u64 {
             let j = wrap(integerify(X, r), i);
             blkxor(X, V.add(usize::try_from(j).unwrap().wrapping_mul(s)), s);
         }
@@ -763,8 +725,6 @@ unsafe fn smix2(
     Nloop: u64,
     flags: Flags,
     V: *mut u32,
-    NROM: u64,
-    VROM: *const u32,
     XY: *mut u32,
     ctx: *mut PwxformCtx,
 ) {
@@ -781,16 +741,11 @@ unsafe fn smix2(
             );
         }
     }
-    for i in 0..Nloop {
-        if !VROM.is_null() && i & 1 != 0 {
-            let j = integerify(X, r) & NROM.wrapping_sub(1);
-            blkxor(X, VROM.add(usize::try_from(j).unwrap().wrapping_mul(s)), s);
-        } else {
-            let j = integerify(X, r) & N.wrapping_sub(1);
-            blkxor(X, V.add(usize::try_from(j).unwrap().wrapping_mul(s)), s);
-            if flags & 0x2_u32 != 0 {
-                blkcpy(V.add(usize::try_from(j).unwrap().wrapping_mul(s)), X, s);
-            }
+    for _ in 0..Nloop {
+        let j = integerify(X, r) & N.wrapping_sub(1);
+        blkxor(X, V.add(usize::try_from(j).unwrap().wrapping_mul(s)), s);
+        if flags & 0x2_u32 != 0 {
+            blkcpy(V.add(usize::try_from(j).unwrap().wrapping_mul(s)), X, s);
         }
         if !ctx.is_null() {
             blockmix_pwxform(X, ctx, r);
