@@ -21,11 +21,7 @@
     unused_qualifications
 )]
 // Temporary lint overrides while C code is being translated
-#![allow(
-    clippy::too_many_arguments,
-    non_snake_case,
-    unsafe_op_in_unsafe_fn
-)]
+#![allow(clippy::too_many_arguments, non_snake_case, unsafe_op_in_unsafe_fn)]
 
 // Adapted from the yescrypt reference implementation available at:
 // <https://github.com/openwall/yescrypt>
@@ -59,8 +55,6 @@ struct Local {
     pub aligned_size: usize,
 }
 
-type Region = Local;
-type Shared = Region;
 type Flags = u32;
 
 #[derive(Copy, Clone)]
@@ -116,7 +110,6 @@ pub fn yescrypt_kdf(
 
     unsafe {
         yescrypt_kdf_inner(
-            ptr::null(),
             &mut local,
             passwd.as_ptr(),
             passwd.len(),
@@ -131,7 +124,6 @@ pub fn yescrypt_kdf(
 }
 
 unsafe fn yescrypt_kdf_inner(
-    shared: *const Shared,
     local: *mut Local,
     mut passwd: *const u8,
     mut passwdlen: usize,
@@ -158,7 +150,6 @@ unsafe fn yescrypt_kdf_inner(
         && N.wrapping_div(p as u64).wrapping_mul(r as u64) >= 0x20000_u64
     {
         let retval: libc::c_int = yescrypt_kdf_body(
-            shared,
             local,
             passwd,
             passwdlen,
@@ -180,7 +171,7 @@ unsafe fn yescrypt_kdf_inner(
         passwdlen = size_of::<[u8; 32]>();
     }
     yescrypt_kdf_body(
-        shared, local, passwd, passwdlen, salt, saltlen, flags, N, r, p, t, NROM, buf, buflen,
+        local, passwd, passwdlen, salt, saltlen, flags, N, r, p, t, NROM, buf, buflen,
     )
 }
 
@@ -193,7 +184,6 @@ unsafe fn yescrypt_init_local(local: *mut Local) -> libc::c_int {
 }
 
 unsafe fn yescrypt_kdf_body(
-    shared: *const Shared,
     local: *mut Local,
     mut passwd: *const u8,
     mut passwdlen: usize,
@@ -271,40 +261,8 @@ unsafe fn yescrypt_kdf_body(
         match current_block {
             15162489974460950378 => {}
             _ => {
-                let mut VROM = ptr::null();
-                if !shared.is_null() {
-                    let expected_size = (128usize)
-                        .wrapping_mul(r as usize)
-                        .wrapping_mul(NROM as usize);
-                    if NROM & NROM.wrapping_sub(1_u64) != 0_u64
-                        || NROM <= 1_u64
-                        || (*shared).aligned_size < expected_size
-                    {
-                        current_block = 15162489974460950378;
-                    } else {
-                        if flags & 0x1000000_u32 == 0 {
-                            let tag: *mut u32 = (*shared).aligned.byte_add(expected_size).sub(48);
-                            let tag1: u64 =
-                                ((*tag.add(1) as u64) << 32).wrapping_add(*tag.add(0) as u64);
-                            let tag2: u64 = ((*tag.add(3) as u64) << 32)
-                                .wrapping_add(*tag.add(2) as libc::c_ulong);
-                            if tag1 != 0x7470797263736579_u64 || tag2 != 0x687361684d4f522d_u64 {
-                                current_block = 15162489974460950378;
-                            } else {
-                                current_block = 13472856163611868459;
-                            }
-                        } else {
-                            current_block = 13472856163611868459;
-                        }
-                        match current_block {
-                            15162489974460950378 => {}
-                            _ => {
-                                VROM = (*shared).aligned;
-                                current_block = 14763689060501151050;
-                            }
-                        }
-                    }
-                } else if NROM != 0 {
+                let VROM = ptr::null();
+                if NROM != 0 {
                     current_block = 15162489974460950378;
                 } else {
                     current_block = 14763689060501151050;
