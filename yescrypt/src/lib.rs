@@ -41,7 +41,6 @@
     non_upper_case_globals,
     path_statements,
     unused_assignments,
-    unused_mut,
     unsafe_op_in_unsafe_fn
 )]
 
@@ -164,23 +163,23 @@ pub fn yescrypt_kdf(
 }
 
 unsafe fn yescrypt_kdf_inner(
-    mut shared: *const Shared,
-    mut local: *mut Local,
+    shared: *const Shared,
+    local: *mut Local,
     mut passwd: *const uint8_t,
     mut passwdlen: size_t,
-    mut salt: *const uint8_t,
-    mut saltlen: size_t,
-    mut params: *const Params,
-    mut buf: *mut uint8_t,
-    mut buflen: size_t,
+    salt: *const uint8_t,
+    saltlen: size_t,
+    params: *const Params,
+    buf: *mut uint8_t,
+    buflen: size_t,
 ) -> libc::c_int {
-    let mut flags: Flags = (*params).flags;
-    let mut N: uint64_t = (*params).N;
-    let mut r: uint32_t = (*params).r;
-    let mut p: uint32_t = (*params).p;
-    let mut t: uint32_t = (*params).t;
-    let mut g: uint32_t = (*params).g;
-    let mut NROM: uint64_t = (*params).NROM;
+    let flags: Flags = (*params).flags;
+    let N: uint64_t = (*params).N;
+    let r: uint32_t = (*params).r;
+    let p: uint32_t = (*params).p;
+    let t: uint32_t = (*params).t;
+    let g: uint32_t = (*params).g;
+    let NROM: uint64_t = (*params).NROM;
     let mut dk: [uint8_t; 32] = [0; 32];
     if g != 0 {
         return -(1 as libc::c_int);
@@ -192,7 +191,7 @@ unsafe fn yescrypt_kdf_inner(
             .wrapping_mul(r as libc::c_ulong)
             >= 0x20000 as libc::c_int as libc::c_ulong
     {
-        let mut retval: libc::c_int = yescrypt_kdf_body(
+        let retval: libc::c_int = yescrypt_kdf_body(
             shared,
             local,
             passwd,
@@ -219,7 +218,7 @@ unsafe fn yescrypt_kdf_inner(
     );
 }
 
-unsafe fn yescrypt_init_local(mut local: *mut Local) -> libc::c_int {
+unsafe fn yescrypt_init_local(local: *mut Local) -> libc::c_int {
     (*local).aligned = ptr::null_mut();
     (*local).base = (*local).aligned;
     (*local).aligned_size = 0 as libc::c_int as size_t;
@@ -228,20 +227,20 @@ unsafe fn yescrypt_init_local(mut local: *mut Local) -> libc::c_int {
 }
 
 unsafe fn yescrypt_kdf_body(
-    mut shared: *const Shared,
-    mut local: *mut Local,
+    shared: *const Shared,
+    local: *mut Local,
     mut passwd: *const uint8_t,
     mut passwdlen: size_t,
-    mut salt: *const uint8_t,
-    mut saltlen: size_t,
-    mut flags: Flags,
-    mut N: u64,
-    mut r: uint32_t,
-    mut p: uint32_t,
-    mut t: uint32_t,
-    mut NROM: u64,
-    mut buf: *mut uint8_t,
-    mut buflen: size_t,
+    salt: *const uint8_t,
+    saltlen: size_t,
+    flags: Flags,
+    N: u64,
+    r: uint32_t,
+    p: uint32_t,
+    t: uint32_t,
+    NROM: u64,
+    buf: *mut uint8_t,
+    buflen: size_t,
 ) -> libc::c_int {
     let mut current_block: u64;
     let mut retval: libc::c_int = -(1 as libc::c_int);
@@ -357,7 +356,7 @@ unsafe fn yescrypt_kdf_body(
                                     _ => {
                                         VROM = ptr::null();
                                         if !shared.is_null() {
-                                            let mut expected_size = (128usize)
+                                            let expected_size = (128usize)
                                                 .wrapping_mul(r as usize)
                                                 .wrapping_mul(NROM as usize);
                                             if NROM
@@ -372,12 +371,12 @@ unsafe fn yescrypt_kdf_body(
                                                 if flags & 0x1000000 as libc::c_int as libc::c_uint
                                                     == 0
                                                 {
-                                                    let mut tag: *mut uint32_t = ((*shared).aligned
+                                                    let tag: *mut uint32_t = ((*shared).aligned
                                                         as *mut uint8_t)
                                                         .offset(expected_size as isize)
                                                         .offset(-(48 as libc::c_int as isize))
                                                         as *mut uint32_t;
-                                                    let mut tag1: uint64_t = ((*tag
+                                                    let tag1: uint64_t = ((*tag
                                                         .offset(1 as libc::c_int as isize)
                                                         as uint64_t)
                                                         << 32 as libc::c_int)
@@ -385,7 +384,7 @@ unsafe fn yescrypt_kdf_body(
                                                             *tag.offset(0 as libc::c_int as isize)
                                                                 as libc::c_ulong,
                                                         );
-                                                    let mut tag2: uint64_t = ((*tag
+                                                    let tag2: uint64_t = ((*tag
                                                         .offset(3 as libc::c_int as isize)
                                                         as uint64_t)
                                                         << 32 as libc::c_int)
@@ -764,11 +763,11 @@ unsafe fn yescrypt_kdf_body(
     return -(1 as libc::c_int);
 }
 
-unsafe fn pwxform(mut B: *mut uint32_t, mut ctx: *mut PwxformCtx) {
-    let mut X: *mut [[uint32_t; 2]; 2] = B as *mut [[uint32_t; 2]; 2];
-    let mut S0: *mut [uint32_t; 2] = (*ctx).S0;
-    let mut S1: *mut [uint32_t; 2] = (*ctx).S1;
-    let mut S2: *mut [uint32_t; 2] = (*ctx).S2;
+unsafe fn pwxform(B: *mut uint32_t, ctx: *mut PwxformCtx) {
+    let X: *mut [[uint32_t; 2]; 2] = B as *mut [[uint32_t; 2]; 2];
+    let S0: *mut [uint32_t; 2] = (*ctx).S0;
+    let S1: *mut [uint32_t; 2] = (*ctx).S1;
+    let S2: *mut [uint32_t; 2] = (*ctx).S2;
     let mut w: size_t = (*ctx).w;
     let mut i: size_t = 0;
     let mut j: size_t = 0;
@@ -842,7 +841,7 @@ unsafe fn pwxform(mut B: *mut uint32_t, mut ctx: *mut PwxformCtx) {
     (*ctx).w = w & (((1usize) << 8usize) * 2usize - 1usize);
 }
 
-unsafe fn blockmix_pwxform(mut B: *mut uint32_t, mut ctx: *mut PwxformCtx, mut r: usize) {
+unsafe fn blockmix_pwxform(B: *mut uint32_t, ctx: *mut PwxformCtx, r: usize) {
     let mut X: [uint32_t; 16] = [0; 16];
     let mut r1: size_t = 0;
     let mut i: size_t = 0;
@@ -895,20 +894,20 @@ unsafe fn blockmix_pwxform(mut B: *mut uint32_t, mut ctx: *mut PwxformCtx, mut r
 }
 
 unsafe fn smix(
-    mut B: *mut uint32_t,
-    mut r: usize,
-    mut N: u64,
-    mut p: uint32_t,
-    mut t: uint32_t,
-    mut flags: Flags,
-    mut V: *mut uint32_t,
-    mut NROM: u64,
-    mut VROM: *const uint32_t,
-    mut XY: *mut uint32_t,
-    mut ctx: *mut PwxformCtx,
-    mut passwd: *mut uint8_t,
+    B: *mut uint32_t,
+    r: usize,
+    N: u64,
+    p: uint32_t,
+    t: uint32_t,
+    flags: Flags,
+    V: *mut uint32_t,
+    NROM: u64,
+    VROM: *const uint32_t,
+    XY: *mut uint32_t,
+    ctx: *mut PwxformCtx,
+    passwd: *mut uint8_t,
 ) {
-    let mut s: size_t = (32 * r) as size_t;
+    let s: size_t = (32 * r) as size_t;
     let mut Nchunk: uint64_t = 0;
     let mut Nloop_all: uint64_t = 0;
     let mut Nloop_rw: uint64_t = 0;
@@ -958,14 +957,14 @@ unsafe fn smix(
     i = 0 as libc::c_int as uint32_t;
     Vchunk = 0 as libc::c_int as uint64_t;
     while i < p {
-        let mut Np: uint64_t = if i < p.wrapping_sub(1 as libc::c_int as libc::c_uint) {
+        let Np: uint64_t = if i < p.wrapping_sub(1 as libc::c_int as libc::c_uint) {
             Nchunk
         } else {
             N.wrapping_sub(Vchunk)
         };
-        let mut Bp: *mut uint32_t =
+        let Bp: *mut uint32_t =
             &mut *B.offset((i as usize).wrapping_mul(s) as isize) as *mut uint32_t;
-        let mut Vp: *mut uint32_t =
+        let Vp: *mut uint32_t =
             &mut *V.offset((Vchunk as usize).wrapping_mul(s) as isize) as *mut uint32_t;
         let mut ctx_i: *mut PwxformCtx = ptr::null_mut();
         if flags & 0x2 as libc::c_int as libc::c_uint != 0 {
@@ -1020,7 +1019,7 @@ unsafe fn smix(
     }
     i = 0 as libc::c_int as uint32_t;
     while i < p {
-        let mut Bp_0: *mut uint32_t =
+        let Bp_0: *mut uint32_t =
             &mut *B.offset((i as usize).wrapping_mul(s) as isize) as *mut uint32_t;
         smix2(
             Bp_0,
@@ -1044,19 +1043,19 @@ unsafe fn smix(
 }
 
 unsafe fn smix1(
-    mut B: *mut uint32_t,
-    mut r: usize,
-    mut N: uint64_t,
-    mut flags: Flags,
-    mut V: *mut uint32_t,
-    mut NROM: uint64_t,
-    mut VROM: *const uint32_t,
-    mut XY: *mut uint32_t,
-    mut ctx: *mut PwxformCtx,
+    B: *mut uint32_t,
+    r: usize,
+    N: uint64_t,
+    flags: Flags,
+    V: *mut uint32_t,
+    NROM: uint64_t,
+    VROM: *const uint32_t,
+    XY: *mut uint32_t,
+    ctx: *mut PwxformCtx,
 ) {
-    let mut s: size_t = (32usize).wrapping_mul(r);
-    let mut X: *mut uint32_t = XY;
-    let mut Y: *mut uint32_t = &mut *XY.offset(s as isize) as *mut uint32_t;
+    let s: size_t = (32usize).wrapping_mul(r);
+    let X: *mut uint32_t = XY;
+    let Y: *mut uint32_t = &mut *XY.offset(s as isize) as *mut uint32_t;
     let mut i: usize = 0;
     let mut j: uint64_t = 0;
     let mut k: size_t = 0;
@@ -1141,20 +1140,20 @@ unsafe fn smix1(
 }
 
 unsafe fn smix2(
-    mut B: *mut uint32_t,
-    mut r: usize,
-    mut N: u64,
-    mut Nloop: u64,
-    mut flags: Flags,
-    mut V: *mut uint32_t,
-    mut NROM: u64,
-    mut VROM: *const uint32_t,
-    mut XY: *mut uint32_t,
-    mut ctx: *mut PwxformCtx,
+    B: *mut uint32_t,
+    r: usize,
+    N: u64,
+    Nloop: u64,
+    flags: Flags,
+    V: *mut uint32_t,
+    NROM: u64,
+    VROM: *const uint32_t,
+    XY: *mut uint32_t,
+    ctx: *mut PwxformCtx,
 ) {
-    let mut s: size_t = (32usize).wrapping_mul(r);
-    let mut X: *mut uint32_t = XY;
-    let mut Y: *mut uint32_t = &mut *XY.offset(s as isize) as *mut uint32_t;
+    let s: size_t = (32usize).wrapping_mul(r);
+    let X: *mut uint32_t = XY;
+    let Y: *mut uint32_t = &mut *XY.offset(s as isize) as *mut uint32_t;
     // let mut i: uint64_t = 0;
     let mut j: uint64_t = 0;
     let mut k: size_t = 0;
