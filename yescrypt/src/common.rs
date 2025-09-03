@@ -282,7 +282,6 @@ pub(crate) unsafe fn decode64_uint32_fixed(
 ) -> *const uint8_t {
     let mut bits: uint32_t = 0;
     *dst = 0 as libc::c_int as uint32_t;
-    bits = 0 as libc::c_int as uint32_t;
     while bits < dstbits {
         let fresh6 = src;
         src = src.offset(1);
