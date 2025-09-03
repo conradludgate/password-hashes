@@ -33,7 +33,6 @@
     clippy::single_match,
     clippy::too_many_arguments,
     clippy::toplevel_ref_arg,
-    clippy::unnecessary_mut_passed,
     clippy::unwrap_used,
     clippy::zero_ptr,
     non_camel_case_types,
@@ -565,7 +564,7 @@ unsafe fn yescrypt_kdf_body(
                                                                                         i as isize,
                                                                                     ))
                                                                                     .S;
-                                                                                *fresh5 = &mut *S
+                                                                                *fresh5 = S
                                                                                     .offset(
                                                                                         (i as libc::c_ulong)
                                                                                             .wrapping_mul(
@@ -596,7 +595,7 @@ unsafe fn yescrypt_kdf_body(
                                                                         } else {
                                                                             for i in 0..p {
                                                                                 smix(
-                                                                                    &mut *B
+                                                                                    B
                                                                                         .add(
                                                                                             (32usize)
                                                                                                 .wrapping_mul(r as usize)
@@ -797,7 +796,7 @@ unsafe fn blockmix_pwxform(B: *mut uint32_t, ctx: *mut PwxformCtx, r: usize) {
     let r1 = (128usize).wrapping_mul(r).wrapping_div(4 * 2 * 8);
     blkcpy(
         X.as_mut_ptr(),
-        &mut *B.offset(
+        B.offset(
             r1.wrapping_sub(1usize)
                 .wrapping_mul((4usize * 2 * 8).wrapping_div(size_of::<uint32_t>()))
                 as isize,
@@ -808,7 +807,7 @@ unsafe fn blockmix_pwxform(B: *mut uint32_t, ctx: *mut PwxformCtx, r: usize) {
         if r1 > 1 {
             blkxor(
                 X.as_mut_ptr(),
-                &mut *B.offset(
+                B.offset(
                     i.wrapping_mul((4usize * 2 * 8).wrapping_div(size_of::<uint32_t>())) as isize,
                 ),
                 (4usize * 2 * 8).wrapping_div(size_of::<uint32_t>()),
@@ -816,23 +815,21 @@ unsafe fn blockmix_pwxform(B: *mut uint32_t, ctx: *mut PwxformCtx, r: usize) {
         }
         pwxform(X.as_mut_ptr(), ctx);
         blkcpy(
-            &mut *B.offset(
-                i.wrapping_mul((4usize * 2 * 8).wrapping_div(size_of::<uint32_t>())) as isize,
-            ),
+            B.offset(i.wrapping_mul((4usize * 2 * 8).wrapping_div(size_of::<uint32_t>())) as isize),
             X.as_mut_ptr(),
             (4usize * 2 * 8).wrapping_div(size_of::<uint32_t>()),
         );
     }
     let mut i = r1.wrapping_sub(1).wrapping_mul(4 * 2 * 8).wrapping_div(64);
-    salsa20::salsa20_2(&mut *B.add(i.wrapping_mul(16)));
+    salsa20::salsa20_2(B.add(i.wrapping_mul(16)));
     i = i.wrapping_add(1);
     for i in i..(2usize).wrapping_mul(r) {
         blkxor(
-            &mut *B.offset(i.wrapping_mul(16usize) as isize),
-            &mut *B.offset(i.wrapping_sub(1usize).wrapping_mul(16usize) as isize),
+            B.offset(i.wrapping_mul(16usize) as isize),
+            B.offset(i.wrapping_sub(1usize).wrapping_mul(16usize) as isize),
             16 as libc::c_int as size_t,
         );
-        salsa20::salsa20_2(&mut *B.offset(i.wrapping_mul(16) as isize));
+        salsa20::salsa20_2(B.offset(i.wrapping_mul(16) as isize));
     }
 }
 
@@ -899,13 +896,12 @@ unsafe fn smix(
         } else {
             N.wrapping_sub(Vchunk)
         };
-        let Bp: *mut uint32_t =
-            &mut *B.offset((i as usize).wrapping_mul(s) as isize) as *mut uint32_t;
+        let Bp: *mut uint32_t = B.offset((i as usize).wrapping_mul(s) as isize) as *mut uint32_t;
         let Vp: *mut uint32_t =
-            &mut *V.offset((Vchunk as usize).wrapping_mul(s) as isize) as *mut uint32_t;
+            V.offset((Vchunk as usize).wrapping_mul(s) as isize) as *mut uint32_t;
         let mut ctx_i: *mut PwxformCtx = ptr::null_mut();
         if flags & 0x2 as libc::c_int as libc::c_uint != 0 {
-            ctx_i = &mut *ctx.offset(i as isize) as *mut PwxformCtx;
+            ctx_i = ctx.offset(i as isize);
             smix1(
                 Bp,
                 1 as libc::c_int as size_t,
@@ -953,8 +949,7 @@ unsafe fn smix(
         Vchunk = (Vchunk as libc::c_ulong).wrapping_add(Nchunk) as uint64_t as uint64_t;
     }
     for i in 0..p {
-        let Bp_0: *mut uint32_t =
-            &mut *B.offset((i as usize).wrapping_mul(s) as isize) as *mut uint32_t;
+        let Bp_0: *mut uint32_t = B.offset((i as usize).wrapping_mul(s) as isize) as *mut uint32_t;
         smix2(
             Bp_0,
             r,
@@ -966,7 +961,7 @@ unsafe fn smix(
             VROM,
             XY,
             if flags & 0x2 as libc::c_int as libc::c_uint != 0 {
-                &mut *ctx.offset(i as isize)
+                ctx.offset(i as isize)
             } else {
                 ptr::null_mut()
             },
@@ -987,11 +982,11 @@ unsafe fn smix1(
 ) {
     let s: size_t = (32usize).wrapping_mul(r);
     let X: *mut uint32_t = XY;
-    let Y: *mut uint32_t = &mut *XY.offset(s as isize) as *mut uint32_t;
+    let Y: *mut uint32_t = XY.offset(s as isize) as *mut uint32_t;
     for k in 0..(2usize).wrapping_mul(r) {
         for i in 0..16usize {
             *X.offset(k.wrapping_mul(16usize).wrapping_add(i) as isize) = le32dec(
-                &mut *B.offset(
+                B.offset(
                     k.wrapping_mul(16usize)
                         .wrapping_add(i.wrapping_mul(5usize).wrapping_rem(16usize))
                         as isize,
@@ -1001,14 +996,14 @@ unsafe fn smix1(
     }
     for i in 0..N {
         blkcpy(
-            &mut *V.offset(usize::try_from(i).unwrap().wrapping_mul(s) as isize),
+            V.offset(usize::try_from(i).unwrap().wrapping_mul(s) as isize),
             X,
             s,
         );
         if !VROM.is_null() && i == 0 as libc::c_int as libc::c_ulong {
             blkxor(
                 X,
-                &*VROM.offset(
+                VROM.offset(
                     usize::try_from(NROM)
                         .unwrap()
                         .wrapping_sub(1)
@@ -1020,7 +1015,7 @@ unsafe fn smix1(
             let j = integerify(X, r) & NROM.wrapping_sub(1);
             blkxor(
                 X,
-                &*VROM.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
+                VROM.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
                 s,
             );
         } else if flags & 0x2 as libc::c_int as libc::c_uint != 0
@@ -1029,7 +1024,7 @@ unsafe fn smix1(
             let j = wrap(integerify(X, r), i);
             blkxor(
                 X,
-                &mut *V.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
+                V.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
                 s,
             );
         }
@@ -1042,7 +1037,7 @@ unsafe fn smix1(
     for k in 0..(2usize).wrapping_mul(r) {
         for i in 0..16usize {
             le32enc(
-                &mut *B.offset(
+                B.offset(
                     k.wrapping_mul(16usize)
                         .wrapping_add(i.wrapping_mul(5usize).wrapping_rem(16usize))
                         as isize,
@@ -1067,11 +1062,11 @@ unsafe fn smix2(
 ) {
     let s: size_t = (32usize).wrapping_mul(r);
     let X: *mut uint32_t = XY;
-    let Y: *mut uint32_t = &mut *XY.offset(s as isize) as *mut uint32_t;
+    let Y: *mut uint32_t = XY.offset(s as isize) as *mut uint32_t;
     for k in 0..(2usize).wrapping_mul(r) {
         for i in 0..16usize {
             *X.offset(k.wrapping_mul(16usize).wrapping_add(i) as isize) = le32dec(
-                &mut *B.offset(
+                B.offset(
                     k.wrapping_mul(16usize)
                         .wrapping_add(i.wrapping_mul(5usize).wrapping_rem(16usize))
                         as isize,
@@ -1084,19 +1079,19 @@ unsafe fn smix2(
             let j = integerify(X, r) & NROM.wrapping_sub(1);
             blkxor(
                 X,
-                &*VROM.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
+                VROM.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
                 s,
             );
         } else {
             let j = integerify(X, r) & N.wrapping_sub(1);
             blkxor(
                 X,
-                &mut *V.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
+                V.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
                 s,
             );
             if flags & 0x2 as libc::c_int as libc::c_uint != 0 {
                 blkcpy(
-                    &mut *V.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
+                    V.offset(usize::try_from(j).unwrap().wrapping_mul(s) as isize),
                     X,
                     s,
                 );
@@ -1111,7 +1106,7 @@ unsafe fn smix2(
     for k in 0..(2usize).wrapping_mul(r) {
         for i in 0..16usize {
             le32enc(
-                &mut *B.offset(
+                B.offset(
                     k.wrapping_mul(16)
                         .wrapping_add(i.wrapping_mul(5).wrapping_rem(16))
                         as isize,
