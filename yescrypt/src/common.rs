@@ -45,8 +45,7 @@ pub(crate) unsafe fn integerify(mut B: *const uint32_t, mut r: usize) -> uint64_
             .wrapping_sub(1usize)
             .wrapping_mul(16usize),
     ) as *const uint32_t;
-    ((*X.offset(13 as libc::c_int as isize) as uint64_t) << 32 as libc::c_int)
-        .wrapping_add(*X.offset(0 as libc::c_int as isize) as libc::c_ulong)
+    ((*X.add(13) as uint64_t) << 32).wrapping_add(*X as libc::c_ulong)
 }
 
 #[inline]
@@ -70,7 +69,7 @@ unsafe fn memxor(mut dst: *mut libc::c_uchar, mut src: *mut libc::c_uchar, mut s
         src = src.offset(1);
         let fresh12 = dst;
         dst = dst.offset(1);
-        *fresh12 = (*fresh12 as libc::c_int ^ *fresh11 as libc::c_int) as libc::c_uchar;
+        *fresh12 = (*fresh12 ^ *fresh11) as libc::c_uchar;
     }
 }
 
