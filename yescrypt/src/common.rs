@@ -539,37 +539,22 @@ unsafe fn memxor(mut dst: *mut libc::c_uchar, mut src: *mut libc::c_uchar, mut s
     }
 }
 
-pub(crate) unsafe fn N2log2(mut N: uint64_t) -> uint32_t {
-    let mut N_log2: uint32_t = 0;
-    if N < 2 as libc::c_int as libc::c_ulong {
-        return 0 as libc::c_int as uint32_t;
-    }
-    N_log2 = 2 as libc::c_int as uint32_t;
-    while N >> N_log2 != 0 as libc::c_int as libc::c_ulong {
-        N_log2 = N_log2.wrapping_add(1);
-        N_log2;
-    }
-    N_log2 = N_log2.wrapping_sub(1);
-    N_log2;
-    if N >> N_log2 != 1 as libc::c_int as libc::c_ulong {
-        return 0 as libc::c_int as uint32_t;
-    }
-    return N_log2;
+pub(crate) fn ilog2(mut N: u64) -> u32 {
+    N.checked_ilog2().unwrap_or(0)
 }
 
-pub(crate) unsafe fn p2floor(mut x: uint64_t) -> uint64_t {
-    let mut y: uint64_t = 0;
+pub(crate) fn prev_power_of_two(mut x: uint64_t) -> uint64_t {
     loop {
-        y = x & x.wrapping_sub(1 as libc::c_int as libc::c_ulong);
-        if !(y != 0) {
+        let y = x & x.wrapping_sub(1);
+        if y == 0 {
             break;
         }
         x = y;
     }
-    return x;
+    x
 }
 
-pub(crate) unsafe fn wrap(mut x: uint64_t, mut i: uint64_t) -> uint64_t {
-    let mut n: uint64_t = p2floor(i);
-    return (x & n.wrapping_sub(1 as libc::c_int as libc::c_ulong)).wrapping_add(i.wrapping_sub(n));
+pub(crate) fn wrap(mut x: uint64_t, mut i: uint64_t) -> uint64_t {
+    let mut n: uint64_t = prev_power_of_two(i);
+    return (x & n.wrapping_sub(1)).wrapping_add(i.wrapping_sub(n));
 }
