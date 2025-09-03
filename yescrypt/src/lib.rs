@@ -23,7 +23,6 @@
 // Temporary lint overrides while C code is being translated
 #![allow(
     clippy::collapsible_if,
-    clippy::ptr_offset_with_cast,
     clippy::single_match,
     clippy::too_many_arguments,
     clippy::unwrap_used,
