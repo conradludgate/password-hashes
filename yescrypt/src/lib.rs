@@ -40,10 +40,7 @@ use crate::{
     sha256::{HMAC_SHA256_Buf, PBKDF2_SHA256, SHA256_Buf},
 };
 use alloc::{vec, vec::Vec};
-use core::{
-    mem::{self, size_of},
-    ptr,
-};
+use core::ptr;
 use libc::{free, malloc, memcpy};
 
 #[derive(Copy, Clone)]
@@ -101,10 +98,12 @@ pub fn yescrypt_kdf(
         NROM: 0,
     };
 
-    let mut local: Local = unsafe { mem::zeroed() };
-    unsafe {
-        yescrypt_init_local(&mut local);
-    }
+    let mut local: Local = Local {
+        base: ptr::null_mut(),
+        aligned: ptr::null_mut(),
+        base_size: 0,
+        aligned_size: 0,
+    };
 
     let mut dst = vec![0u8; dstlen];
 
@@ -124,7 +123,7 @@ pub fn yescrypt_kdf(
 }
 
 unsafe fn yescrypt_kdf_inner(
-    local: *mut Local,
+    local: &mut Local,
     mut passwd: *const u8,
     mut passwdlen: usize,
     salt: *const u8,
@@ -175,16 +174,8 @@ unsafe fn yescrypt_kdf_inner(
     )
 }
 
-unsafe fn yescrypt_init_local(local: *mut Local) -> libc::c_int {
-    (*local).aligned = ptr::null_mut();
-    (*local).base = (*local).aligned;
-    (*local).aligned_size = 0_usize;
-    (*local).base_size = (*local).aligned_size;
-    0
-}
-
 unsafe fn yescrypt_kdf_body(
-    local: *mut Local,
+    local: &mut Local,
     mut passwd: *const u8,
     mut passwdlen: usize,
     salt: *const u8,
@@ -271,12 +262,12 @@ unsafe fn yescrypt_kdf_body(
                     _ => {
                         let V_size = 128usize.wrapping_mul(r as usize).wrapping_mul(N as usize);
                         if flags & 0x1000000_u32 != 0 {
-                            V = (*local).aligned;
-                            if (*local).aligned_size < V_size {
-                                if !((*local).base).is_null()
-                                    || !((*local).aligned).is_null()
-                                    || (*local).base_size != 0
-                                    || (*local).aligned_size != 0
+                            V = local.aligned;
+                            if local.aligned_size < V_size {
+                                if !(local.base).is_null()
+                                    || !(local.aligned).is_null()
+                                    || local.base_size != 0
+                                    || local.aligned_size != 0
                                 {
                                     current_block = 15162489974460950378;
                                 } else {
@@ -284,10 +275,10 @@ unsafe fn yescrypt_kdf_body(
                                     if V.is_null() {
                                         return -(1);
                                     }
-                                    (*local).aligned = V;
-                                    (*local).base = (*local).aligned;
-                                    (*local).aligned_size = V_size;
-                                    (*local).base_size = (*local).aligned_size;
+                                    local.aligned = V;
+                                    local.base = local.aligned;
+                                    local.aligned_size = V_size;
+                                    local.base_size = local.aligned_size;
                                     current_block = 9853141518545631134;
                                 }
                             } else {
