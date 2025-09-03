@@ -39,17 +39,12 @@ use crate::{
     common::{blkcpy, blkxor, integerify, le32dec, le32enc, prev_power_of_two, wrap},
     sha256::{HMAC_SHA256_Buf, PBKDF2_SHA256, SHA256_Buf},
 };
-use alloc::{vec, vec::Vec};
+use alloc::{boxed::Box, vec, vec::Vec};
 use core::ptr;
 use libc::{free, malloc, memcpy};
 
-#[derive(Copy, Clone)]
-#[repr(C)]
 struct Local {
-    pub base: *mut u32,
-    pub aligned: *mut u32,
-    pub base_size: usize,
-    pub aligned_size: usize,
+    pub aligned: Box<[u32]>,
 }
 
 type Flags = u32;
@@ -99,10 +94,7 @@ pub fn yescrypt_kdf(
     };
 
     let mut local: Local = Local {
-        base: ptr::null_mut(),
-        aligned: ptr::null_mut(),
-        base_size: 0,
-        aligned_size: 0,
+        aligned: Vec::new().into_boxed_slice(),
     };
 
     let mut dst = vec![0u8; dstlen];
@@ -189,22 +181,25 @@ unsafe fn yescrypt_kdf_body(
     buf: *mut u8,
     buflen: usize,
 ) -> libc::c_int {
+    const FAIL: u64 = 15162489974460950378;
+
+    let mut tmp_v;
     let mut current_block: u64;
     let mut retval: libc::c_int = -(1);
-    let mut V: *mut u32;
+    let V: &mut [u32];
     let mut sha256: [u32; 8] = [0; 8];
     let mut dk: [u8; 32] = [0; 32];
     match flags & 0x3_u32 {
         0 => {
             if flags != 0 || t != 0 || NROM != 0 {
-                current_block = 15162489974460950378;
+                current_block = FAIL;
             } else {
                 current_block = 2868539653012386629;
             }
         }
         1 => {
             if flags != 1_u32 || NROM != 0 {
-                current_block = 15162489974460950378;
+                current_block = FAIL;
             } else {
                 current_block = 2868539653012386629;
             }
@@ -212,15 +207,15 @@ unsafe fn yescrypt_kdf_body(
         2 => {
             if flags != flags & (0x3 | 0x3fc | 0x10000 | 0x1000000 | 0x8000000 | 0x10000000) as u32
             {
-                current_block = 15162489974460950378;
+                current_block = FAIL;
             } else if flags & 0x3fc_u32 == (0x4 | 0x10 | 0x20 | 0x80) as u32 {
                 current_block = 2868539653012386629;
             } else {
-                current_block = 15162489974460950378;
+                current_block = FAIL;
             }
         }
         _ => {
-            current_block = 15162489974460950378;
+            current_block = FAIL;
         }
     }
     if current_block == 2868539653012386629
@@ -242,7 +237,7 @@ unsafe fn yescrypt_kdf_body(
                 || p as u64 > 18446744073709551615_u64.wrapping_div((3 * ((1) << 8) * 2 * 8) as u64)
                 || p as u64 > 18446744073709551615_u64.wrapping_div(size_of::<PwxformCtx>() as u64)
             {
-                current_block = 15162489974460950378;
+                current_block = FAIL;
             } else {
                 current_block = 6009453772311597924;
             }
@@ -250,42 +245,32 @@ unsafe fn yescrypt_kdf_body(
             current_block = 6009453772311597924;
         }
         match current_block {
-            15162489974460950378 => {}
+            FAIL => {}
             _ => {
                 if NROM != 0 {
-                    current_block = 15162489974460950378;
+                    current_block = FAIL;
                 } else {
                     current_block = 14763689060501151050;
                 }
                 match current_block {
-                    15162489974460950378 => {}
+                    FAIL => {}
                     _ => {
                         let V_size = 128usize.wrapping_mul(r as usize).wrapping_mul(N as usize);
                         if flags & 0x1000000_u32 != 0 {
-                            V = local.aligned;
-                            if local.aligned_size < V_size {
-                                if !(local.base).is_null()
-                                    || !(local.aligned).is_null()
-                                    || local.base_size != 0
-                                    || local.aligned_size != 0
-                                {
-                                    current_block = 15162489974460950378;
+                            if local.aligned.len() < V_size {
+                                if !local.aligned.is_empty() {
+                                    return -1;
                                 } else {
-                                    V = malloc(V_size) as *mut u32;
-                                    if V.is_null() {
-                                        return -(1);
-                                    }
-                                    local.aligned = V;
-                                    local.base = local.aligned;
-                                    local.aligned_size = V_size;
-                                    local.base_size = local.aligned_size;
+                                    local.aligned = vec![0u32; V_size].into_boxed_slice();
+                                    V = &mut *local.aligned;
                                     current_block = 9853141518545631134;
                                 }
                             } else {
+                                V = &mut *local.aligned;
                                 current_block = 9853141518545631134;
                             }
                             match current_block {
-                                15162489974460950378 => {}
+                                FAIL => {}
                                 _ => {
                                     if flags & 0x8000000_u32 != 0 {
                                         return -(2);
@@ -294,14 +279,12 @@ unsafe fn yescrypt_kdf_body(
                                 }
                             }
                         } else {
-                            V = malloc(V_size) as *mut u32;
-                            if V.is_null() {
-                                return -(1);
-                            }
+                            tmp_v = vec![0u32; V_size].into_boxed_slice();
+                            V = &mut *tmp_v;
                             current_block = 7746103178988627676;
                         }
                         match current_block {
-                            15162489974460950378 => {}
+                            FAIL => {}
                             _ => {
                                 let B_size =
                                     128usize.wrapping_mul(r as usize).wrapping_mul(p as usize);
@@ -387,7 +370,7 @@ unsafe fn yescrypt_kdf_body(
                                                     p,
                                                     t,
                                                     flags,
-                                                    V,
+                                                    V.as_mut_ptr(),
                                                     XY,
                                                     pwxform_ctx,
                                                     sha256.as_mut_ptr() as *mut u8,
@@ -405,7 +388,7 @@ unsafe fn yescrypt_kdf_body(
                                                         1_u32,
                                                         t,
                                                         flags,
-                                                        V,
+                                                        V.as_mut_ptr(),
                                                         XY,
                                                         ptr::null_mut(),
                                                         ptr::null_mut(),
@@ -467,9 +450,6 @@ unsafe fn yescrypt_kdf_body(
                                         free(XY as *mut libc::c_void);
                                     }
                                     free(B as *mut libc::c_void);
-                                }
-                                if flags & 0x1000000_u32 == 0 {
-                                    free(V as *mut libc::c_void);
                                 }
                                 return retval;
                             }
