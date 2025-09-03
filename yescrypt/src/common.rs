@@ -47,12 +47,12 @@ pub(crate) unsafe fn integerify(mut B: *const u32, mut r: usize) -> u64 {
 }
 
 #[inline]
-pub(crate) unsafe fn le32dec(mut pp: *const libc::c_void) -> u32 {
+pub(crate) unsafe fn le32dec(mut pp: *const u32) -> u32 {
     u32::from_le_bytes(pp.cast::<[u8; 4]>().read())
 }
 
 #[inline]
-pub(crate) unsafe fn le32enc(mut pp: *mut libc::c_void, mut x: u32) {
+pub(crate) unsafe fn le32enc(mut pp: *mut u32, mut x: u32) {
     pp.cast::<[u8; 4]>().write(x.to_le_bytes())
 }
 

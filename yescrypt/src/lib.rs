@@ -54,8 +54,8 @@ use libc::{free, malloc, memcpy};
 #[derive(Copy, Clone)]
 #[repr(C)]
 struct Local {
-    pub base: *mut libc::c_void,
-    pub aligned: *mut libc::c_void,
+    pub base: *mut u32,
+    pub aligned: *mut u32,
     pub base_size: usize,
     pub aligned_size: usize,
 }
@@ -284,9 +284,7 @@ unsafe fn yescrypt_kdf_body(
                         current_block = 15162489974460950378;
                     } else {
                         if flags & 0x1000000_u32 == 0 {
-                            let tag: *mut u32 =
-                                ((*shared).aligned as *mut u8).add(expected_size).sub(48)
-                                    as *mut u32;
+                            let tag: *mut u32 = (*shared).aligned.byte_add(expected_size).sub(48);
                             let tag1: u64 =
                                 ((*tag.add(1) as u64) << 32).wrapping_add(*tag.add(0) as u64);
                             let tag2: u64 = ((*tag.add(3) as u64) << 32)
@@ -302,7 +300,7 @@ unsafe fn yescrypt_kdf_body(
                         match current_block {
                             15162489974460950378 => {}
                             _ => {
-                                VROM = (*shared).aligned as *const u32;
+                                VROM = (*shared).aligned;
                                 current_block = 14763689060501151050;
                             }
                         }
@@ -317,7 +315,7 @@ unsafe fn yescrypt_kdf_body(
                     _ => {
                         let V_size = 128usize.wrapping_mul(r as usize).wrapping_mul(N as usize);
                         if flags & 0x1000000_u32 != 0 {
-                            V = (*local).aligned as *mut u32;
+                            V = (*local).aligned;
                             if (*local).aligned_size < V_size {
                                 if !((*local).base).is_null()
                                     || !((*local).aligned).is_null()
@@ -330,7 +328,7 @@ unsafe fn yescrypt_kdf_body(
                                     if V.is_null() {
                                         return -(1);
                                     }
-                                    (*local).aligned = V as *mut libc::c_void;
+                                    (*local).aligned = V;
                                     (*local).base = (*local).aligned;
                                     (*local).aligned_size = V_size;
                                     (*local).base_size = (*local).aligned_size;
@@ -392,16 +390,14 @@ unsafe fn yescrypt_kdf_body(
                                         if current_block == 12381812505308290051 {
                                             if flags != 0 {
                                                 HMAC_SHA256_Buf(
-                                                    b"yescrypt-prehash\0" as *const u8
-                                                        as *const libc::c_char
-                                                        as *const libc::c_void,
+                                                    b"yescrypt-prehash".as_ptr(),
                                                     (if flags & 0x10000000_u32 != 0 {
                                                         16
                                                     } else {
                                                         8
                                                     })
                                                         as usize,
-                                                    passwd as *const libc::c_void,
+                                                    passwd,
                                                     passwdlen,
                                                     sha256.as_mut_ptr() as *mut u8,
                                                 );
@@ -497,11 +493,9 @@ unsafe fn yescrypt_kdf_body(
                                             );
                                             if flags != 0 && flags & 0x10000000_u32 == 0 {
                                                 HMAC_SHA256_Buf(
-                                                    dkp as *const libc::c_void,
+                                                    dkp,
                                                     size_of::<[u8; 32]>(),
-                                                    b"Client Key\0" as *const u8
-                                                        as *const libc::c_char
-                                                        as *const libc::c_void,
+                                                    b"Client Key".as_ptr(),
                                                     10_usize,
                                                     sha256.as_mut_ptr() as *mut u8,
                                                 );
@@ -510,8 +504,7 @@ unsafe fn yescrypt_kdf_body(
                                                     clen = size_of::<[u8; 32]>();
                                                 }
                                                 SHA256_Buf(
-                                                    sha256.as_mut_ptr() as *mut u8
-                                                        as *const libc::c_void,
+                                                    sha256.as_mut_ptr() as *mut u8,
                                                     size_of::<[u32; 8]>(),
                                                     dk.as_mut_ptr(),
                                                 );
@@ -699,9 +692,9 @@ unsafe fn smix(
             (*ctx_i).w = 0_usize;
             if i == 0_u32 {
                 HMAC_SHA256_Buf(
-                    Bp.add(s.wrapping_sub(16)) as *const libc::c_void,
+                    Bp.add(s.wrapping_sub(16)).cast::<u8>(),
                     64_usize,
-                    passwd as *const libc::c_void,
+                    passwd,
                     32_usize,
                     passwd,
                 );
@@ -763,7 +756,7 @@ unsafe fn smix1(
                 B.add(
                     k.wrapping_mul(16usize)
                         .wrapping_add(i.wrapping_mul(5usize).wrapping_rem(16usize)),
-                ) as *const libc::c_void,
+                ),
             );
         }
     }
@@ -799,7 +792,7 @@ unsafe fn smix1(
                 B.add(
                     k.wrapping_mul(16usize)
                         .wrapping_add(i.wrapping_mul(5usize).wrapping_rem(16usize)),
-                ) as *mut libc::c_void,
+                ),
                 *X.add(k.wrapping_mul(16usize).wrapping_add(i)),
             );
         }
@@ -827,7 +820,7 @@ unsafe fn smix2(
                 B.add(
                     k.wrapping_mul(16usize)
                         .wrapping_add(i.wrapping_mul(5usize).wrapping_rem(16usize)),
-                ) as *const libc::c_void,
+                ),
             );
         }
     }
@@ -854,7 +847,7 @@ unsafe fn smix2(
                 B.add(
                     k.wrapping_mul(16)
                         .wrapping_add(i.wrapping_mul(5).wrapping_rem(16)),
-                ) as *mut libc::c_void,
+                ),
                 *X.add(k.wrapping_mul(16).wrapping_add(i)),
             );
         }
