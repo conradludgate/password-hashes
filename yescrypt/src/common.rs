@@ -45,8 +45,8 @@ pub(crate) unsafe fn integerify(mut B: *const uint32_t, mut r: usize) -> uint64_
             .wrapping_sub(1usize)
             .wrapping_mul(16usize) as isize,
     ) as *const uint32_t;
-    return ((*X.offset(13 as libc::c_int as isize) as uint64_t) << 32 as libc::c_int)
-        .wrapping_add(*X.offset(0 as libc::c_int as isize) as libc::c_ulong);
+    ((*X.offset(13 as libc::c_int as isize) as uint64_t) << 32 as libc::c_int)
+        .wrapping_add(*X.offset(0 as libc::c_int as isize) as libc::c_ulong)
 }
 
 #[inline]
@@ -91,5 +91,5 @@ pub(crate) fn prev_power_of_two(mut x: uint64_t) -> uint64_t {
 
 pub(crate) fn wrap(mut x: uint64_t, mut i: uint64_t) -> uint64_t {
     let mut n: uint64_t = prev_power_of_two(i);
-    return (x & n.wrapping_sub(1)).wrapping_add(i.wrapping_sub(n));
+    (x & n.wrapping_sub(1)).wrapping_add(i.wrapping_sub(n))
 }

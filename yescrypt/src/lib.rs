@@ -24,7 +24,6 @@
 #![allow(
     clippy::cast_possible_wrap,
     clippy::collapsible_if,
-    clippy::needless_return,
     clippy::nonminimal_bool,
     clippy::ptr_offset_with_cast,
     clippy::single_match,
@@ -194,9 +193,9 @@ unsafe fn yescrypt_kdf_inner(
         passwd = dk.as_mut_ptr();
         passwdlen = size_of::<[uint8_t; 32]>();
     }
-    return yescrypt_kdf_body(
+    yescrypt_kdf_body(
         shared, local, passwd, passwdlen, salt, saltlen, flags, N, r, p, t, NROM, buf, buflen,
-    );
+    )
 }
 
 unsafe fn yescrypt_init_local(local: *mut Local) -> libc::c_int {
@@ -204,7 +203,7 @@ unsafe fn yescrypt_init_local(local: *mut Local) -> libc::c_int {
     (*local).base = (*local).aligned;
     (*local).aligned_size = 0 as libc::c_int as size_t;
     (*local).base_size = (*local).aligned_size;
-    return 0 as libc::c_int;
+    0 as libc::c_int
 }
 
 unsafe fn yescrypt_kdf_body(
@@ -719,7 +718,7 @@ unsafe fn yescrypt_kdf_body(
         }
         _ => {}
     }
-    return -(1 as libc::c_int);
+    -(1 as libc::c_int)
 }
 
 unsafe fn pwxform(B: *mut uint32_t, ctx: *mut PwxformCtx) {
