@@ -39,11 +39,11 @@ pub(crate) unsafe fn blkxor(mut dst: *mut uint32_t, mut src: *const uint32_t, mu
 }
 
 pub(crate) unsafe fn integerify(mut B: *const uint32_t, mut r: usize) -> uint64_t {
-    let mut X: *const uint32_t = B.offset(
+    let mut X: *const uint32_t = B.add(
         (2usize)
             .wrapping_mul(r)
             .wrapping_sub(1usize)
-            .wrapping_mul(16usize) as isize,
+            .wrapping_mul(16usize),
     ) as *const uint32_t;
     ((*X.offset(13 as libc::c_int as isize) as uint64_t) << 32 as libc::c_int)
         .wrapping_add(*X.offset(0 as libc::c_int as isize) as libc::c_ulong)
