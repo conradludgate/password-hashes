@@ -59,10 +59,7 @@ use crate::{
     sha256::{HMAC_SHA256_Buf, PBKDF2_SHA256, SHA256_Buf},
 };
 use alloc::{vec, vec::Vec};
-use core::{
-    mem::{self, size_of},
-    ptr,
-};
+use core::{mem::size_of, ptr};
 use libc::{free, malloc, memcpy};
 
 type uint8_t = libc::c_uchar;
@@ -135,10 +132,12 @@ pub fn yescrypt_kdf(
         NROM: 0,
     };
 
-    let mut local: Local = unsafe { mem::zeroed() };
-    unsafe {
-        yescrypt_init_local(&mut local);
-    }
+    let mut local = Local {
+        base: ptr::null_mut(),
+        aligned: ptr::null_mut(),
+        base_size: 0,
+        aligned_size: 0,
+    };
 
     let mut dst = vec![0u8; dstlen];
 
@@ -158,7 +157,7 @@ pub fn yescrypt_kdf(
 }
 
 unsafe fn yescrypt_kdf_inner(
-    mut local: *mut Local,
+    mut local: &mut Local,
     mut passwd: *const uint8_t,
     mut passwdlen: size_t,
     mut salt: *const uint8_t,
@@ -211,16 +210,8 @@ unsafe fn yescrypt_kdf_inner(
     );
 }
 
-unsafe fn yescrypt_init_local(mut local: *mut Local) -> libc::c_int {
-    (*local).aligned = ptr::null_mut();
-    (*local).base = (*local).aligned;
-    (*local).aligned_size = 0 as libc::c_int as size_t;
-    (*local).base_size = (*local).aligned_size;
-    return 0 as libc::c_int;
-}
-
 unsafe fn yescrypt_kdf_body(
-    mut local: *mut Local,
+    mut local: &mut Local,
     mut passwd: *const uint8_t,
     mut passwdlen: size_t,
     mut salt: *const uint8_t,
@@ -331,12 +322,12 @@ unsafe fn yescrypt_kdf_body(
 
     V_size = 128usize.wrapping_mul(r as usize).wrapping_mul(N as usize);
     if flags & 0x1000000 as libc::c_int as libc::c_uint != 0 {
-        V = (*local).aligned as *mut uint32_t;
-        if (*local).aligned_size < V_size {
-            if !((*local).base).is_null()
-                || !((*local).aligned).is_null()
-                || (*local).base_size != 0
-                || (*local).aligned_size != 0
+        V = local.aligned as *mut uint32_t;
+        if local.aligned_size < V_size {
+            if !(local.base).is_null()
+                || !(local.aligned).is_null()
+                || local.base_size != 0
+                || local.aligned_size != 0
             {
                 return -1;
             }
@@ -344,10 +335,10 @@ unsafe fn yescrypt_kdf_body(
             if V.is_null() {
                 return -(1 as libc::c_int);
             }
-            (*local).aligned = V as *mut libc::c_void;
-            (*local).base = (*local).aligned;
-            (*local).aligned_size = V_size;
-            (*local).base_size = (*local).aligned_size;
+            local.aligned = V as *mut libc::c_void;
+            local.base = local.aligned;
+            local.aligned_size = V_size;
+            local.base_size = local.aligned_size;
         }
 
         if flags & 0x8000000 as libc::c_int as libc::c_uint != 0 {
