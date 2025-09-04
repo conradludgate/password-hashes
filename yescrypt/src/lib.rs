@@ -27,7 +27,6 @@
     clippy::missing_safety_doc,
     clippy::needless_return,
     clippy::no_effect,
-    clippy::nonminimal_bool,
     clippy::precedence,
     clippy::ptr_offset_with_cast,
     clippy::single_match,
@@ -294,9 +293,9 @@ unsafe fn yescrypt_kdf_body(
     }
     match current_block {
         2868539653012386629 => {
-            if !(buflen > (1usize << 32).wrapping_sub(1).wrapping_mul(32)) {
-                if !((r as uint64_t).wrapping_mul(p as uint64_t)
-                    >= ((1 as libc::c_int) << 30 as libc::c_int) as libc::c_ulong)
+            if buflen <= (1usize << 32).wrapping_sub(1).wrapping_mul(32) {
+                if (r as uint64_t).wrapping_mul(p as uint64_t)
+                    < ((1 as libc::c_int) << 30 as libc::c_int) as libc::c_ulong
                 {
                     if !(N & N.wrapping_sub(1 as libc::c_int as libc::c_ulong)
                         != 0 as libc::c_int as libc::c_ulong
@@ -312,11 +311,9 @@ unsafe fn yescrypt_kdf_body(
                                 .wrapping_div(128 as libc::c_int as libc::c_ulong)
                                 .wrapping_div(r as libc::c_ulong))
                         {
-                            if !(N
-                                > (18446744073709551615 as libc::c_ulong).wrapping_div(
-                                    (t as uint64_t).wrapping_add(1 as libc::c_int as libc::c_ulong),
-                                ))
-                            {
+                            if N <= (18446744073709551615 as libc::c_ulong).wrapping_div(
+                                (t as uint64_t).wrapping_add(1 as libc::c_int as libc::c_ulong),
+                            ) {
                                 if flags & 0x2 as libc::c_int as libc::c_uint != 0 {
                                     if N.wrapping_div(p as libc::c_ulong)
                                         <= 1 as libc::c_int as libc::c_ulong

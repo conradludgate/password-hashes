@@ -101,7 +101,7 @@ pub(crate) unsafe fn blkcpy(mut dst: *mut uint32_t, mut src: *const uint32_t, mu
         dst = dst.offset(1);
         *fresh1 = *fresh0;
         count = count.wrapping_sub(1);
-        if !(count != 0) {
+        if count == 0 {
             break;
         }
     }
@@ -115,7 +115,7 @@ pub(crate) unsafe fn blkxor(mut dst: *mut uint32_t, mut src: *const uint32_t, mu
         dst = dst.offset(1);
         *fresh3 ^= *fresh2;
         count = count.wrapping_sub(1);
-        if !(count != 0) {
+        if count == 0 {
             break;
         }
     }
@@ -147,7 +147,7 @@ pub(crate) unsafe fn decode64(
         loop {
             let fresh7 = srclen;
             srclen = srclen.wrapping_sub(1);
-            if !(fresh7 != 0) {
+            if fresh7 == 0 {
                 break;
             }
             let mut c: uint32_t = atoi64(*src);
@@ -176,7 +176,7 @@ pub(crate) unsafe fn decode64(
             loop {
                 let fresh8 = dstpos;
                 dstpos = dstpos.wrapping_add(1);
-                if !(fresh8 < *dstlen) {
+                if fresh8 >= *dstlen {
                     break;
                 }
                 let fresh9 = dst;
@@ -185,7 +185,7 @@ pub(crate) unsafe fn decode64(
                 value >>= 8 as libc::c_int;
                 bits = (bits as libc::c_uint).wrapping_sub(8 as libc::c_int as libc::c_uint)
                     as uint32_t as uint32_t;
-                if !(bits < 8 as libc::c_int as libc::c_uint) {
+                if bits >= 8 as libc::c_int as libc::c_uint {
                     continue;
                 }
                 if value != 0 {
@@ -228,7 +228,7 @@ pub(crate) unsafe fn decode64_uint32(
     let fresh2 = src;
     src = src.offset(1);
     c = atoi64(*fresh2);
-    if !(c > 63 as libc::c_int as libc::c_uint) {
+    if c <= 63 as libc::c_int as libc::c_uint {
         *dst = min;
         while c > end {
             *dst = (*dst as libc::c_uint).wrapping_add(
@@ -251,7 +251,7 @@ pub(crate) unsafe fn decode64_uint32(
             as uint32_t;
         loop {
             chars = chars.wrapping_sub(1);
-            if !(chars != 0) {
+            if chars == 0 {
                 current_block = 2979737022853876585;
                 break;
             }
@@ -378,7 +378,7 @@ pub(crate) unsafe fn encode64_uint32(
     *fresh0 = *itoa64.offset(start.wrapping_add(src >> bits) as isize) as uint8_t;
     loop {
         chars = chars.wrapping_sub(1);
-        if !(chars != 0) {
+        if chars == 0 {
             break;
         }
         bits = (bits as libc::c_uint).wrapping_sub(6 as libc::c_int as libc::c_uint) as uint32_t
@@ -529,7 +529,7 @@ unsafe fn memxor(mut dst: *mut libc::c_uchar, mut src: *mut libc::c_uchar, mut s
     loop {
         let fresh10 = size;
         size = size.wrapping_sub(1);
-        if !(fresh10 != 0) {
+        if fresh10 == 0 {
             break;
         }
         let fresh11 = src;
@@ -562,7 +562,7 @@ pub(crate) unsafe fn p2floor(mut x: uint64_t) -> uint64_t {
     let mut y: uint64_t = 0;
     loop {
         y = x & x.wrapping_sub(1 as libc::c_int as libc::c_ulong);
-        if !(y != 0) {
+        if y == 0 {
             break;
         }
         x = y;
