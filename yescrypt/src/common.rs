@@ -201,14 +201,9 @@ pub(crate) unsafe fn decode64(
             }
         }
     }
-    match current_block {
-        15904375183555213903 => {
-            if srclen == 0 && dstpos <= *dstlen {
-                *dstlen = dstpos;
-                return src;
-            }
-        }
-        _ => {}
+    if current_block == 15904375183555213903 && srclen == 0 && dstpos <= *dstlen {
+        *dstlen = dstpos;
+        return src;
     }
     *dstlen = 0 as libc::c_int as size_t;
     return 0 as *const uint8_t;
