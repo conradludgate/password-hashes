@@ -111,7 +111,7 @@ pub(crate) fn smix(
                 PrivateFlags::empty(),
                 &mut si[..],
                 xy,
-                &mut None,
+                None,
             );
 
             let (s2, s10) = si.split_at_mut((1 << 8) * 4);
@@ -146,19 +146,10 @@ pub(crate) fn smix(
         };
 
         // 27: SMix1_r(B_i, n, V_{u..v}, flags)
-        smix1(bs, r, np, flags, vp, xy, &mut ctx_i);
+        smix1(bs, r, np, flags, vp, xy, ctx_i.as_deref_mut());
 
         // 28: SMix2_r(B_i, p2floor(n), Nloop_rw, V_{u..v}, flags)
-        smix2(
-            bs,
-            r,
-            prev_power_of_two(np),
-            nloop_rw,
-            flags,
-            vp,
-            xy,
-            &mut ctx_i,
-        );
+        smix2(bs, r, prev_power_of_two(np), nloop_rw, flags, vp, xy, ctx_i);
 
         vchunk += nchunk;
     }
@@ -166,7 +157,7 @@ pub(crate) fn smix(
     // 30: for i = 0 to p - 1 do
     #[allow(clippy::needless_range_loop)]
     for i in 0..p as usize {
-        let mut ctx_i = if flags.contains(PrivateFlags::RW) {
+        let ctx_i = if flags.contains(PrivateFlags::RW) {
             Some(&mut ctxs[i])
         } else {
             None
@@ -181,7 +172,7 @@ pub(crate) fn smix(
             flags & !PrivateFlags::RW,
             v,
             xy,
-            &mut ctx_i,
+            ctx_i,
         );
     }
 }
@@ -197,7 +188,7 @@ fn smix1(
     flags: PrivateFlags,
     v: &mut [u32],
     xy: &mut [u32],
-    ctx: &mut Option<&mut PwxformCtx<'_>>,
+    mut ctx: Option<&mut PwxformCtx<'_>>,
 ) {
     let s = 32 * r;
     let (x, y) = xy.split_at_mut(s);
@@ -220,7 +211,7 @@ fn smix1(
         }
 
         // 4: X <-- H(X)
-        match ctx {
+        match &mut ctx {
             Some(ctx) => ctx.blockmix_pwxform(x, r),
             None => salsa20::blockmix_salsa8(x, y, r),
         }
@@ -247,7 +238,7 @@ fn smix2(
     flags: PrivateFlags,
     v: &mut [u32],
     xy: &mut [u32],
-    ctx: &mut Option<&mut PwxformCtx<'_>>,
+    mut ctx: Option<&mut PwxformCtx<'_>>,
 ) {
     let s = 32 * r;
     let (x, y) = xy.split_at_mut(s);
@@ -273,7 +264,7 @@ fn smix2(
         }
 
         // 8.2: X <-- H(X)
-        match ctx {
+        match &mut ctx {
             Some(ctx) => ctx.blockmix_pwxform(x, r),
             None => salsa20::blockmix_salsa8(x, y, r),
         }
