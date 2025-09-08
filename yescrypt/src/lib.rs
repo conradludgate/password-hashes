@@ -71,7 +71,10 @@ pub use crate::{
     params::Params,
 };
 
-use crate::pwxform::{PwxformCtx, RMIN};
+use crate::{
+    flags::PrivateFlags,
+    pwxform::{PwxformCtx, RMIN},
+};
 use alloc::{boxed::Box, vec, vec::Vec};
 use sha2::{Digest, Sha256};
 
@@ -148,7 +151,7 @@ pub fn yescrypt_kdf(passwd: &[u8], salt: &[u8], params: &Params, out: &mut [u8])
         &mut local,
         passwd,
         salt,
-        params.flags,
+        params.flags.into(),
         params.n,
         params.r,
         params.p,
@@ -167,7 +170,7 @@ fn yescrypt_kdf_body(
     local: &mut Local,
     passwd: &[u8],
     salt: &[u8],
-    flags: Flags,
+    flags: PrivateFlags,
     n: u64,
     r: u32,
     p: u32,
@@ -180,34 +183,37 @@ fn yescrypt_kdf_body(
     let mut sha256 = [0u8; 32];
     let mut dk = [0u8; 32];
 
-    match flags & Flags::MODE_MASK {
+    match flags & PrivateFlags::MODE_MASK {
         // 0 (masking and bitflags play somewhat oddly together)
-        Flags::ROUNDS_3 => {
+        PrivateFlags::ROUNDS_3 => {
             // classic scrypt - can't have anything non-standard
             if !flags.is_empty() || t != 0 || nrom != 0 {
                 return Err(Error);
             }
         }
-        Flags::WORM => {
-            if flags != Flags::WORM || nrom != 0 {
+        PrivateFlags::WORM => {
+            if flags != PrivateFlags::WORM || nrom != 0 {
                 return Err(Error);
             }
         }
-        Flags::RW => {
+        PrivateFlags::RW => {
             if flags
                 != flags
-                    & (Flags::MODE_MASK
-                        | Flags::RW_FLAVOR_MASK
-                        | Flags::SHARED_PREALLOCATED
-                        | Flags::INIT_SHARED
-                        | Flags::ALLOC_ONLY
-                        | Flags::PREHASH)
+                    & (PrivateFlags::MODE_MASK
+                        | PrivateFlags::RW_FLAVOR_MASK
+                        | PrivateFlags::SHARED_PREALLOCATED
+                        | PrivateFlags::INIT_SHARED
+                        | PrivateFlags::ALLOC_ONLY
+                        | PrivateFlags::PREHASH)
             {
                 return Err(Error);
             }
 
-            if (flags & Flags::RW_FLAVOR_MASK)
-                != (Flags::ROUNDS_6 | Flags::GATHER_4 | Flags::SIMPLE_2 | Flags::SBOX_12K)
+            if (flags & PrivateFlags::RW_FLAVOR_MASK)
+                != (PrivateFlags::ROUNDS_6
+                    | PrivateFlags::GATHER_4
+                    | PrivateFlags::SIMPLE_2
+                    | PrivateFlags::SBOX_12K)
             {
                 return Err(Error);
             }
@@ -225,7 +231,7 @@ fn yescrypt_kdf_body(
         return Err(Error);
     }
 
-    if flags.contains(Flags::RW)
+    if flags.contains(PrivateFlags::RW)
         && (n / (p as u64) <= 1
             || r < RMIN as u32
             || p as u64 > u64::MAX / (3 * (1 << 8) * 2 * 8)
@@ -240,7 +246,7 @@ fn yescrypt_kdf_body(
 
     let mut v_owned: Box<[u32]>;
     let v_size = 32 * (r as usize) * (n as usize);
-    let v = if flags.contains(Flags::INIT_SHARED) {
+    let v = if flags.contains(PrivateFlags::INIT_SHARED) {
         if local.aligned.len() < v_size {
             // why can't we just reallocate here?
             if !local.aligned.is_empty() {
@@ -249,7 +255,7 @@ fn yescrypt_kdf_body(
 
             local.aligned = vec![0; v_size].into_boxed_slice();
         }
-        if flags.contains(Flags::ALLOC_ONLY) {
+        if flags.contains(PrivateFlags::ALLOC_ONLY) {
             return Err(Error);
         }
         &mut *local.aligned
@@ -264,7 +270,7 @@ fn yescrypt_kdf_body(
 
     if !flags.is_empty() {
         sha256 = util::hmac_sha256(
-            if flags.contains(Flags::PREHASH) {
+            if flags.contains(PrivateFlags::PREHASH) {
                 &b"yescrypt-prehash"[..]
             } else {
                 &b"yescrypt"[..]
@@ -282,7 +288,7 @@ fn yescrypt_kdf_body(
         passwd = &sha256;
     }
 
-    if flags.contains(Flags::RW) {
+    if flags.contains(PrivateFlags::RW) {
         smix::smix(&mut b, r as usize, n, p, t, flags, v, &mut xy, &mut sha256);
         passwd = &sha256;
     } else {
@@ -315,7 +321,7 @@ fn yescrypt_kdf_body(
     // SCRAM (RFC 5802), so that an extension of SCRAM (with the steps so
     // far in place of SCRAM's use of PBKDF2 and with SHA-256 in place of
     // SCRAM's use of SHA-1) would be usable with yescrypt hashes.
-    if !flags.is_empty() && !flags.contains(Flags::PREHASH) {
+    if !flags.is_empty() && !flags.contains(PrivateFlags::PREHASH) {
         let dkp = if !flags.is_empty() && out.len() < 32 {
             &mut dk
         } else {

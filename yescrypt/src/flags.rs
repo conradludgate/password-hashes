@@ -3,7 +3,41 @@
 bitflags::bitflags! {
     /// Flags for controlling the operation of `yescrypt`.
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-    pub struct Flags: u32 {
+    pub struct Flags: u8 {
+        /// Write once read many
+        const WORM = 0x01;
+
+        /// Read/write
+        const RW = 0x02;
+
+        /// 3 rounds
+        const ROUNDS_3 = 0b000;
+
+        /// 6 rounds
+        const ROUNDS_6 = 0x04;
+
+        /// Gather 4
+        const GATHER_4 = 0x10;
+
+        /// Simple 2
+        const SIMPLE_2 = 0x20;
+
+        /// SBox 12k
+        const SBOX_12K = 0x80;
+    }
+}
+
+impl Default for Flags {
+    fn default() -> Self {
+        // Adapted from upstream reference C's `YESCRYPT_RW_DEFAULTS`
+        Flags::RW | Flags::ROUNDS_6 | Flags::GATHER_4 | Flags::SIMPLE_2 | Flags::SBOX_12K
+    }
+}
+
+bitflags::bitflags! {
+    /// Flags for controlling the operation of `yescrypt`.
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    pub(crate) struct PrivateFlags: u32 {
         /// Write once read many
         const WORM = 0x001;
 
@@ -45,9 +79,8 @@ bitflags::bitflags! {
     }
 }
 
-impl Default for Flags {
-    fn default() -> Self {
-        // Adapted from upstream reference C's `YESCRYPT_RW_DEFAULTS`
-        Flags::RW | Flags::ROUNDS_6 | Flags::GATHER_4 | Flags::SIMPLE_2 | Flags::SBOX_12K
+impl From<Flags> for PrivateFlags {
+    fn from(value: Flags) -> Self {
+        PrivateFlags::from_bits_retain(value.bits() as u32)
     }
 }

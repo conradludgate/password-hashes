@@ -5,7 +5,7 @@
 use alloc::vec::Vec;
 
 use crate::{
-    Flags,
+    PrivateFlags,
     pwxform::{PwxformCtx, SWORDS},
     salsa20,
     util::{cast_slice, hmac_sha256, slice_as_chunks_mut, xor},
@@ -24,7 +24,7 @@ pub(crate) fn smix(
     n: u64,
     p: u32,
     t: u32,
-    flags: Flags,
+    flags: PrivateFlags,
     v: &mut [u32],
     xy: &mut [u32],
     passwd: &mut [u8],
@@ -36,7 +36,7 @@ pub(crate) fn smix(
 
     // 2: Nloop_all <-- fNloop(n, t, flags)
     let mut nloop_all = nchunk;
-    if flags.contains(Flags::RW) {
+    if flags.contains(PrivateFlags::RW) {
         if t <= 1 {
             if t != 0 {
                 nloop_all *= 2; // 2/3
@@ -54,9 +54,9 @@ pub(crate) fn smix(
 
     // 6: Nloop_rw <-- 0
     let mut nloop_rw = 0;
-    if flags.contains(Flags::INIT_SHARED) {
+    if flags.contains(PrivateFlags::INIT_SHARED) {
         nloop_rw = nloop_all;
-    } else if flags.contains(Flags::RW) {
+    } else if flags.contains(PrivateFlags::RW) {
         // 4: Nloop_rw <-- Nloop_all / p
         nloop_rw = nloop_all / (p as u64);
     }
@@ -74,7 +74,7 @@ pub(crate) fn smix(
     let mut vchunk = 0;
 
     // S_n = [S_i for i in 0..p]
-    let mut sn = if flags.contains(Flags::RW) {
+    let mut sn = if flags.contains(PrivateFlags::RW) {
         alloc::vec![[0u32; SWORDS]; p as usize]
     } else {
         Vec::new()
@@ -100,7 +100,7 @@ pub(crate) fn smix(
         let vp = &mut v[vchunk as usize * s..];
 
         // 17: if YESCRYPT_RW flag is set
-        let mut ctx_i = if flags.contains(Flags::RW) {
+        let mut ctx_i = if flags.contains(PrivateFlags::RW) {
             let si = sn.next().unwrap();
 
             // 18: SMix1_1(B_i, Sbytes / 128, S_i, no flags)
@@ -108,7 +108,7 @@ pub(crate) fn smix(
                 bs,
                 1,
                 SBYTES / 128,
-                Flags::empty(),
+                PrivateFlags::empty(),
                 &mut si[..],
                 xy,
                 &mut None,
@@ -166,7 +166,7 @@ pub(crate) fn smix(
     // 30: for i = 0 to p - 1 do
     #[allow(clippy::needless_range_loop)]
     for i in 0..p as usize {
-        let mut ctx_i = if flags.contains(Flags::RW) {
+        let mut ctx_i = if flags.contains(PrivateFlags::RW) {
             Some(&mut ctxs[i])
         } else {
             None
@@ -178,7 +178,7 @@ pub(crate) fn smix(
             r,
             n,
             nloop_all - nloop_rw,
-            flags & !Flags::RW,
+            flags & !PrivateFlags::RW,
             v,
             xy,
             &mut ctx_i,
@@ -194,7 +194,7 @@ fn smix1(
     b: &mut [u32],
     r: usize,
     n: u64,
-    flags: Flags,
+    flags: PrivateFlags,
     v: &mut [u32],
     xy: &mut [u32],
     ctx: &mut Option<&mut PwxformCtx<'_>>,
@@ -213,7 +213,7 @@ fn smix1(
     for i in 0..n {
         // 3: V_i <-- X
         v[i as usize * s..][..s].copy_from_slice(x);
-        if flags.contains(Flags::RW) && i > 1 {
+        if flags.contains(PrivateFlags::RW) && i > 1 {
             let n = prev_power_of_two(i);
             let j = usize::try_from((integerify(x, r) & (n - 1)) + (i - n)).unwrap();
             xor(x, &v[j * s..][..s]);
@@ -244,7 +244,7 @@ fn smix2(
     r: usize,
     n: u64,
     nloop: u64,
-    flags: Flags,
+    flags: PrivateFlags,
     v: &mut [u32],
     xy: &mut [u32],
     ctx: &mut Option<&mut PwxformCtx<'_>>,
@@ -268,7 +268,7 @@ fn smix2(
         xor(x, &v[j * s..][..s]);
 
         // V_j <-- X
-        if flags.contains(Flags::RW) {
+        if flags.contains(PrivateFlags::RW) {
             v[j as usize * s..][..s].copy_from_slice(x);
         }
 

@@ -1,6 +1,6 @@
 //! Algorithm parameters.
 
-use crate::{Error, Flags, Result, encoding::encode64_uint32};
+use crate::{Error, Flags, Result, encoding::encode64_uint32, flags::PrivateFlags};
 use core::str;
 
 /// `yescrypt` algorithm parameters.
@@ -81,12 +81,13 @@ impl Params {
     /// Encode params as (s)crypt-flavored Base64.
     #[allow(non_snake_case)]
     pub fn encode<'o>(&self, out: &'o mut [u8]) -> Result<&'o str> {
-        let flavor = if self.flags.bits() < Flags::RW.bits() {
-            self.flags.bits()
-        } else if (self.flags & Flags::MODE_MASK) == Flags::RW
-            && self.flags.bits() <= (Flags::RW | Flags::RW_FLAVOR_MASK).bits()
+        let flags: PrivateFlags = self.flags.into();
+        let flavor = if flags.bits() < PrivateFlags::RW.bits() {
+            flags.bits()
+        } else if (flags & PrivateFlags::MODE_MASK) == PrivateFlags::RW
+            && flags.bits() <= (PrivateFlags::RW | PrivateFlags::RW_FLAVOR_MASK).bits()
         {
-            Flags::RW.bits() + (self.flags.bits() >> 2)
+            PrivateFlags::RW.bits() + (flags.bits() >> 2)
         } else {
             return Err(Error);
         };
