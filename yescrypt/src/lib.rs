@@ -75,7 +75,7 @@ use crate::{
     flags::PrivateFlags,
     pwxform::{PwxformCtx, RMIN},
 };
-use alloc::{boxed::Box, vec, vec::Vec};
+use alloc::vec::Vec;
 use sha2::{Digest, Sha256};
 
 #[cfg(feature = "simple")]
@@ -85,9 +85,9 @@ use alloc::string::String;
 #[cfg(feature = "simple")]
 const YESCRYPT_MCF_ID: &str = "y";
 
-#[derive(Clone)]
+#[derive(Default)]
 struct Local {
-    pub aligned: Box<[u32]>,
+    aligned: Vec<u32>,
 }
 
 /// yescrypt password hashing function.
@@ -131,9 +131,7 @@ pub fn yescrypt(passwd: &[u8], salt: &[u8], params: &Params) -> Result<String> {
 
 /// yescrypt Key Derivation Function (KDF)
 pub fn yescrypt_kdf(passwd: &[u8], salt: &[u8], params: &Params, out: &mut [u8]) -> Result<()> {
-    let mut local = Local {
-        aligned: Vec::new().into_boxed_slice(),
-    };
+    let mut local = Local::default();
 
     if params.g != 0 {
         return Err(Error);
@@ -144,6 +142,8 @@ pub fn yescrypt_kdf(passwd: &[u8], salt: &[u8], params: &Params, out: &mut [u8])
         && (params.n / params.p as u64) >= 0x100
         && params.n / (params.p as u64) / (params.r as u64) >= 0x20000
     {
+        // supposed to perform prehashing here?
+        // <https://github.com/openwall/yescrypt/blob/caa931d1217c490cd0d59284ad4a5d6ea68209f1/yescrypt-ref.c#L764-L783>
         return Err(Error);
     }
 
@@ -203,7 +203,6 @@ fn yescrypt_kdf_body(
                         | PrivateFlags::RW_FLAVOR_MASK
                         | PrivateFlags::SHARED_PREALLOCATED
                         | PrivateFlags::INIT_SHARED
-                        | PrivateFlags::ALLOC_ONLY
                         | PrivateFlags::PREHASH)
             {
                 return Err(Error);
@@ -244,29 +243,13 @@ fn yescrypt_kdf_body(
         return Err(Error);
     }
 
-    let mut v_owned: Box<[u32]>;
     let v_size = 32 * (r as usize) * (n as usize);
-    let v = if flags.contains(PrivateFlags::INIT_SHARED) {
-        if local.aligned.len() < v_size {
-            // why can't we just reallocate here?
-            if !local.aligned.is_empty() {
-                return Err(Error);
-            }
-
-            local.aligned = vec![0; v_size].into_boxed_slice();
-        }
-        if flags.contains(PrivateFlags::ALLOC_ONLY) {
-            return Err(Error);
-        }
-        &mut *local.aligned
-    } else {
-        v_owned = vec![0; v_size].into_boxed_slice();
-        &mut *v_owned
-    };
-
     let b_size = 32 * (r as usize) * (p as usize);
-    let mut b = vec![0u32; b_size].into_boxed_slice();
-    let mut xy = vec![0u32; 64 * (r as usize)].into_boxed_slice();
+    let xy_size = 64 * (r as usize);
+    local.aligned.resize(v_size + b_size + xy_size, 0);
+
+    let (v, local_rest) = local.aligned.split_at_mut(v_size);
+    let (b, xy) = local_rest.split_at_mut(b_size);
 
     if !flags.is_empty() {
         sha256 = util::hmac_sha256(
@@ -281,7 +264,7 @@ fn yescrypt_kdf_body(
     }
 
     // 1: (B_0 ... B_{p-1}) <-- PBKDF2(P, S, 1, p * MFLen)
-    pbkdf2::pbkdf2_hmac::<Sha256>(passwd, salt, 1, util::cast_slice_mut(&mut b));
+    pbkdf2::pbkdf2_hmac::<Sha256>(passwd, salt, 1, util::cast_slice_mut(b));
 
     if !flags.is_empty() {
         sha256.copy_from_slice(util::cast_slice(&b[..8]));
@@ -289,7 +272,7 @@ fn yescrypt_kdf_body(
     }
 
     if flags.contains(PrivateFlags::RW) {
-        smix::smix(&mut b, r as usize, n, p, t, flags, v, &mut xy, &mut sha256);
+        smix::smix(b, r as usize, n, p, t, flags, v, xy, &mut sha256);
         passwd = &sha256;
     } else {
         // 2: for i = 0 to p - 1 do
@@ -303,18 +286,18 @@ fn yescrypt_kdf_body(
                 t,
                 flags,
                 v,
-                &mut xy,
+                xy,
                 &mut [],
             );
         }
     }
 
     if !flags.is_empty() && out.len() < 32 {
-        pbkdf2::pbkdf2_hmac::<Sha256>(passwd, util::cast_slice(&b), 1, &mut dk);
+        pbkdf2::pbkdf2_hmac::<Sha256>(passwd, util::cast_slice(b), 1, &mut dk);
     }
 
     // 5: DK <-- PBKDF2(P, B, 1, dkLen)
-    pbkdf2::pbkdf2_hmac::<Sha256>(passwd, util::cast_slice(&b), 1, out);
+    pbkdf2::pbkdf2_hmac::<Sha256>(passwd, util::cast_slice(b), 1, out);
 
     // Except when computing classic scrypt, allow all computation so far
     // to be performed on the client.  The final steps below match those of

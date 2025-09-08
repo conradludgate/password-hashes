@@ -71,9 +71,6 @@ bitflags::bitflags! {
         /// Initialize shared memory
         const INIT_SHARED = 0x01000000;
 
-        /// Allocate only
-        const ALLOC_ONLY = 0x08000000;
-
         /// Prehash
         const PREHASH = 0x10000000;
     }
